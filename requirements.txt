@@ -1,0 +1,44 @@
+# Core FastAPI and async framework
+fastapi==0.115.6
+uvicorn[standard]==0.32.1  # ASGI server with standard extras
+pydantic==2.10.6  # Data validation
+pydantic-settings==2.7.1  # Settings management from environment
+
+# NLP and ML models
+sentence-transformers==3.4.1  # Embeddings model
+faiss-cpu==1.9.0  # Vector similarity search (CPU version)
+# Alternative for GPU: faiss-gpu==1.9.0
+
+# Cross-encoder for reranking
+requests==2.32.3
+
+# LLM integration
+ollama==0.4.10  # Local LLM interface
+
+# Production deployments
+gunicorn==23.0.0  # WSGI server wrapper for production
+python-dotenv==1.0.1  # Environment variable management
+
+# Monitoring and logging
+python-json-logger==3.2.1  # JSON logging for production
+
+# Testing (optional but recommended)
+pytest==8.4.1
+pytest-asyncio==0.26.1
+httpx==0.28.1  # Async HTTP client for testing
+
+# Development tools (optional)
+black==24.10.0  # Code formatter
+flake8==7.1.1  # Linter
+mypy==1.14.1  # Type checking
+ipython==8.31.0  # Enhanced REPL
+
+# Documentation
+python-multipart==0.0.9  # File upload support
+
+# Security
+cryptography==44.0.1  # For HTTPS and encryption
+
+# Data utilities
+numpy>=1.24.0
+scikit-learn>=1.3.0  # May be needed by some models

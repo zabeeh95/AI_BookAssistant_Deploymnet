@@ -1,0 +1,192 @@
+version: '3.8'
+
+services:
+  # ==================== OLLAMA SERVICE ====================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-book-assistant-ollama
+
+    # Port for Ollama API
+    ports:
+      - "11434:11434"
+
+    # Volume for persisting models
+    volumes:
+      - ollama_data:/root/.ollama
+
+    # Resource limits
+    environment:
+      # Enable GPU if available (comment out if using CPU only)
+      # CUDA_VISIBLE_DEVICES: 0
+      OLLAMA_HOST: "0.0.0.0:11434"
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Resource constraints (adjust for your system)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 4G
+    #     reservations:
+    #       cpus: '1'
+    #       memory: 2G
+
+
+  # ==================== API SERVICE ====================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-book-assistant-api
+
+    # Port mapping
+    ports:
+      - "8000:8000"
+
+    # Environment variables
+    environment:
+      ENVIRONMENT: production
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      API_DEBUG: "false"
+      API_WORKERS: 4
+
+      # LLM configuration
+      OLLAMA_BASE_URL: "http://ollama:11434"
+      SMALL_LLM: "llama3.2:1b"
+      LARGE_LLM: "mistral:latest"
+
+      # RAG configuration
+      RAG_TOP_K: "10"
+      RAG_RERANK_K: "3"
+      RAG_USE_RERANKER: "true"
+      RAG_ENABLE_CACHING: "true"
+
+      # Logging
+      LOG_LEVEL: "INFO"
+
+    # Volume mounts
+    volumes:
+      # Mount resource directory (models, chunks, index)
+      - ./resource:/app/resource:ro
+
+      # Mount logs directory for persistence
+      - ./logs:/app/logs
+
+      # Mount data directory
+      - ./data:/app/data:ro
+
+    # Depends on Ollama service
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Resource constraints (adjust for your system)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 4G
+    #     reservations:
+    #       cpus: '1'
+    #       memory: 2G
+
+    # Network mode (use host network for better performance on Linux)
+    # network_mode: host  # Uncomment on Linux for better performance
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+
+  # ==================== NGINX REVERSE PROXY (Optional) ====================
+  # Uncomment to use Nginx for load balancing and SSL
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: ai-book-assistant-nginx
+  #
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./ssl:/etc/nginx/ssl:ro
+  #
+  #   depends_on:
+  #     - api
+  #
+  #   restart: unless-stopped
+
+
+# ==================== VOLUMES ====================
+volumes:
+  ollama_data:
+    driver: local
+
+
+# ==================== NETWORKS ====================
+networks:
+  default:
+    name: ai-book-assistant-network
+    driver: bridge
+
+
+# ==================== QUICK START ====================
+# Build and run:
+#   docker-compose up -d
+#
+# View logs:
+#   docker-compose logs -f api
+#   docker-compose logs -f ollama
+#
+# Pull models (run once):
+#   docker-compose exec ollama ollama pull llama3.2:1b
+#   docker-compose exec ollama ollama pull mistral:latest
+#
+# Test API:
+#   curl http://localhost:8000/docs
+#   curl http://localhost:8000/api/v1/health
+#
+# Stop:
+#   docker-compose down
+#
+# Remove everything (including volumes):
+#   docker-compose down -v
+
+
+# ==================== NOTES ====================
+# 1. Make sure Docker and Docker Compose are installed
+# 2. First time: download models with 'ollama pull' commands
+# 3. Models are stored in ollama_data volume
+# 4. API listens on port 8000
+# 5. Ollama API listens on port 11434
+# 6. Both services have health checks
+# 7. Services restart automatically if they crash
+# 8. Logs are stored with json-file driver (max 10MB per file)
+# 9. For production, add SSL/TLS with Nginx
+# 10. Adjust resource limits based on your system
